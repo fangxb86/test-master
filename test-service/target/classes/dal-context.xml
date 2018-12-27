@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:p="http://www.springframework.org/schema/p" xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-3.0.xsd http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+
+<!--     <bean id="defaultDataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close"
+          p:driverClassName="${db_driver}"
+          p:url="${db_url}"
+          p:username="${db_user}"
+          p:password="${db_pass}"
+          p:validationQuery="select 1"
+          p:testOnBorrow="true"/> -->
+
+<!-- 	<bean id="defaultDataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+		<property name="username" value="${db_user}"></property>
+        <property name="password" value="${db_pass}"></property>
+        <property name="url" value="${db_url}"></property>
+        <property name="driverClassName" value="${db_driver}"></property>
+	</bean> -->
+	<bean id="defaultDataSource" class="org.springframework.jndi.JndiObjectFactoryBean">
+		<property name="jndiName">
+			<value>java:comp/env/app</value>
+		</property>
+	</bean>
+    <!--动态数据源相关-->
+    <bean id="dynamicDataSource" class="org.xyz.test.service.datasourceswitch.impl.DynamicDataSource">
+        <property name="targetDataSources">
+            <map key-type="java.lang.String">
+                <entry key="defaultDataSource" value-ref="defaultDataSource"/>
+            </map>
+        </property>
+        <property name="defaultTargetDataSource" ref="defaultDataSource"/>
+    </bean>
+
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean"
+          p:dataSource-ref="dynamicDataSource"
+          p:typeAliasesPackage="org.xyz.test.dal.dataobject"
+          p:mapperLocations="classpath:mapper/*.xml"/>
+
+    <!--事务相关-->
+    <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager"
+          p:dataSource-ref="dynamicDataSource"/>
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+    <!-- 切面，用于切换数据源，可以将数据源配置到数据库，然后在此类中先切换数据源，再执行service层(注：事务开始后，就不能切数据源了) -->
+<!-- 	<bean id="dataInterceptor" class="org.xyz.test.service.datainteceptor.datainteceptor"></bean>    
+    <aop:config>
+       <aop:pointcut id="txDaoServiceMethods"
+       		expression="execution(* org.xyz.test.service.service.impl..*(..))" />
+       <aop:pointcut id="dataPointcut"
+            expression="* org.xyz.test.service.service.impl..*(..))" />
+       <aop:advisor advice-ref="txAdvice" pointcut-ref="txDaoServiceMethods" order="2" />
+       <aop:aspect id="dataAspect" ref="dataInterceptor" order="1">
+       		<aop:before pointcut-ref="dataPointcut" method="beforeMethod" />
+       		<aop:after pointcut-ref="dataPointcut" method="afterMethod" />
+       </aop:aspect>     	
+    </aop:config> -->
+    
+    <import resource="classpath:dal-mapper.xml"/>
+</beans>
